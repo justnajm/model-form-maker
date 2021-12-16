@@ -50,41 +50,31 @@ class ModelFormMaker extends Command
 
         $oPosts = new $sModelClass;
 
-        //if($this->confirm('Do you want to create this file: ' . $oPost->getTable(). '_form.blade.php'))
-        {
-            $aFields = $oPosts->getConnection()->getSchemaBuilder()->getColumnListing($oPosts->getTable());
-            $message = 'No message for now';
-            // create form for model
-            $sContent =<<<HC
-
-    @error('title')
-        <div class="alert alert-danger">$message</div>
-    @enderror
+		$aFields = $oPosts->getConnection()->getSchemaBuilder()->getColumnListing($oPosts->getTable());
+		$message = 'No message for now';
+		// create form for model
+		$sContent =<<<HC
+@if(Session::has('fail_message'))
+		<div>{{session('fail_message')}}</div>
+@endif
         <form method="POST" action="{{url('/')}}/">
             @csrf
+
 HC;
+		$aSkipColumns = ['id','updated_at','created_at'];
+		foreach($aFields as $k=>$v)
+		{
+			if(!in_array($v,$aSkipColumns))
+			{
+				$sContent .= "            <div class='row'>\r\n";
+				$sContent .= "                <div class='col'>".$this->stringToHuman($v)."</div>\r\n";
+				$sContent .= "                <div class='col'><input name='$v' id='$v' type='text' class=\"@error('$v') is-invalid @enderror\"></div>\r\n";
+				$sContent .= "            </div>\r\n";
+			}
+		}
 
-        /*// adding possibility of input based on data types of column
-        $temp = $oPosts->newQuery()->fromQuery("SHOW FIELDS FROM ".$oPosts->getTable());
-        foreach($temp as $val){
-            echo 'Field: '.$val->Field;
-            echo 'Type: '.$val->Type;
-            echo "<br>";
-        }die;*/
-
-            $aSkipColumns = ['id','updated_at','created_at'];
-            foreach($aFields as $k=>$v)
-            {
-                if(!in_array($v,$aSkipColumns))
-                {
-                    $sContent .= "<div class='row'>";
-                    $sContent .= "<div class='col'>".$this->stringToHuman($v)."</div>";
-                    $sContent .= "<div class='col'><input name='$v' id='$v' type='text' class=\"@error('$v') is-invalid @enderror\"></div>";
-                    $sContent .= "</div>";
-                }
-            }
-
-            $sContent .=<<<HC
+		$sContent .=<<<HC
+			
             <div class='row'>    
                 <div class='col'>
                     <input type='submit' name='submit' value='ADD {$this->stringToHuman($oPosts->getTable())}' />
@@ -93,9 +83,10 @@ HC;
         </form>
 
 HC;
-        }
+        
         $sFilename = "form_".$oPosts->getTable().".blade.php";
         $this->saveAsFile($sFilename,$sContent);
+		
         return Command::SUCCESS;
     }
 
